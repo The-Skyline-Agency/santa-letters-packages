@@ -1,0 +1,655 @@
+---
+import { Image, getImage } from 'astro:assets';
+import '@fontsource-variable/aleo';
+import '@fontsource-variable/atkinson-hyperlegible-next';
+import '../styles/page.css';
+import type { Piece, SceneSpec } from '../scripts/paper-scene';
+
+import logo from '../assets/product/logo-menu.png';
+import heroArt from '../assets/art/hero-village.jpg';
+import doorArt from '../assets/art/front-door.jpg';
+import routeWide from '../assets/art/route-wide.jpg';
+import routeWideDepth from '../assets/art/route-wide-depth.jpg';
+import routeTall from '../assets/art/route-tall.jpg';
+import routeTallDepth from '../assets/art/route-tall-depth.jpg';
+import letterSheet from '../assets/product/santa-letter-sheet.png';
+import certSheet from '../assets/product/cert-letter-lrg.webp';
+import mapSheet from '../assets/product/directions-lrg.webp';
+import listSheet from '../assets/product/nice-list-lrg.webp';
+import envelopeSheet from '../assets/product/envelope-lrg.webp';
+import letterDemo from '../assets/product/letter-03.png';
+import goldBox from '../assets/product/2026-gold-package.webp';
+import eveBox from '../assets/product/2026-christmas-eve-package.webp';
+import videoPoster from '../assets/product/sv-santa-demo-poster.webp';
+import moneyBack from '../assets/product/money-back-icon.png';
+import fedex from '../assets/product/fedex-2day.png';
+import bbb from '../assets/product/bbb.png';
+import toys from '../assets/product/toys.png';
+
+// colour + depth textures for the route plates
+const plate = async (color: ImageMetadata, depth: ImageMetadata, width: number) => ({
+  'data-color': (await getImage({ src: color, width, format: 'webp' })).src,
+  'data-depth': (await getImage({ src: depth, width: Math.round(width / 2), format: 'webp' })).src,
+});
+const routeWidePlate = await plate(routeWide, routeWideDepth, 1920);
+const routeTallPlate = await plate(routeTall, routeTallDepth, 1004);
+
+// plank path, traced on each plate in its own pixel grid (wide 1100x614, tall 600x1076)
+const pathWide = [[265,188],[288,208],[318,235],[360,255],[420,266],[500,270],[580,278],[660,291],[715,308],[733,331],[714,352],[660,368],[590,377],[510,384],[440,397],[398,418],[383,445],[397,474],[440,499],[510,517],[600,526],[690,526],[770,516],[830,502],[862,489]];
+const pathTall = [[150,320],[175,340],[225,364],[300,388],[370,402],[425,417],[438,433],[412,453],[355,474],[280,502],[205,533],[160,558],[168,580],[225,603],[300,630],[380,654],[445,675],[455,693],[405,716],[320,741],[230,768],[150,797],[110,822],[112,842],[150,861],[215,887],[280,920],[345,950],[400,966],[440,960],[458,948]];
+
+// ---- the two 3D paper scenes: every piece is its own cut-out sheet at its own depth
+const sprites = import.meta.glob<{ default: ImageMetadata }>('../assets/sprites/*.png', { eager: true });
+// one file per sprite, however many times and at whatever size it appears in a scene
+const sprite = async (name: string) => {
+  const src = sprites[`../assets/sprites/${name}.png`].default;
+  return (await getImage({ src, height: Math.min(src.height, 720), format: 'webp', quality: 86 })).src;
+};
+type Draft = Omit<Piece, 'src'> & { s: string };
+const build = async (ground: SceneSpec['ground'], minWidth: number, snow: number, drafts: Draft[]): Promise<string> =>
+  JSON.stringify({
+    ground, minWidth, snow,
+    envelope: await sprite('envelope'),
+    pieces: await Promise.all(drafts.map(async ({ s, ...p }) => ({ ...p, src: await sprite(s) }))),
+  } satisfies SceneSpec);
+
+const envelopeUrl = await sprite('envelope');
+const art = Object.fromEntries(await Promise.all(
+  ['big-tree', 'linen', 'seal', 'postmarked', 'houses', 'bundle', 'train', 'bow', 'gold-star', 'bauble-red', 'bauble-copper', 'bauble-cream', 'snowman', 'mailbox']
+    .map(async (n) => [n, await sprite(n)] as const),
+));
+const reasonArt = ['linen', 'seal', 'postmarked', 'houses', 'bundle', 'train'];
+
+// Review tree: ornaments hang from the snow edge of each tier (positions in % of the tree sprite).
+// Along each tier, baubles and review tags alternate: every second slot is a paper tag carrying a review.
+const tiersOfTree = [{ y: 22, half: 18.7, n: 2 }, { y: 35, half: 24.3, n: 3 }, { y: 47.5, half: 30.4, n: 5 }, { y: 61, half: 37.4, n: 5 }, { y: 74, half: 43.5, n: 7 }, { y: 89, half: 49.6, n: 7 }];
+const baubles = ['bauble-red', 'bauble-cream', 'bauble-copper'];
+let nextReview = 0;
+const ornaments = tiersOfTree.flatMap((t, ti) =>
+  Array.from({ length: t.n }, (_, i) => ({ x: 50 + ((i + 0.5) / t.n - 0.5) * 2 * t.half * 0.88, y: t.y + (i % 2 ? 1.2 : 0.2), b: baubles[(ti + i) % 3], tag: i % 2 === 1 })),
+).map((o) => ({ ...o, review: o.tag ? nextReview++ : -1 }));
+
+const heroScene = await build('shelf', 6.8, 220, [
+  // back row of firs
+  { s: 'tree-2', kind: 'stand', x: -7.9, z: -2.7, h: 2.2 }, { s: 'tree-1', kind: 'stand', x: -6.4, z: -2.4, h: 1.7 },
+  { s: 'tree-2', kind: 'stand', x: -4.5, z: -2.6, h: 2.35 }, { s: 'tree-1', kind: 'stand', x: -3.3, z: -2.2, h: 1.7 },
+  { s: 'tree-3', kind: 'stand', x: -0.6, z: -2.7, h: 1.35 }, { s: 'tree-3', kind: 'stand', x: 0.75, z: -2.3, h: 1.15 },
+  { s: 'tree-2', kind: 'stand', x: 3.0, z: -2.6, h: 2.25 }, { s: 'tree-1', kind: 'stand', x: 4.9, z: -2.3, h: 1.8 },
+  { s: 'tree-2', kind: 'stand', x: 7.2, z: -2.7, h: 2.3 }, { s: 'tree-3', kind: 'stand', x: 8.4, z: -2.2, h: 1.4 },
+  // the village: tall pieces stand to the sides so the middle stays low under the headline
+  { s: 'cottage-cream', kind: 'stand', x: -5.6, z: -1.6, h: 1.45, home: true },
+  { s: 'post-office', kind: 'stand', x: -2.75, z: -1.3, h: 1.45, home: true, mail: true },
+  { s: 'cottage-kraft', kind: 'stand', x: 2.2, z: -1.6, h: 1.55, home: true },
+  { s: 'cottage-cream', kind: 'stand', x: 4.0, z: -1.2, h: 1.5, home: true },
+  { s: 'family-house', kind: 'stand', x: 6.0, z: -1.7, h: 1.8, home: true },
+  // front row
+  { s: 'tree-3', kind: 'stand', x: -4.15, z: -0.3, h: 1.05 }, { s: 'pole', kind: 'stand', x: -1.75, z: -0.7, h: 1.0 },
+  { s: 'mailbox', kind: 'stand', x: -1.25, z: -0.1, h: 0.78, mail: true }, { s: 'reindeer', kind: 'stand', x: -0.1, z: -0.5, h: 0.66 },
+  { s: 'reindeer', kind: 'stand', x: 0.4, z: -0.15, h: 0.6 }, { s: 'snowman', kind: 'stand', x: 1.2, z: -0.1, h: 0.62 },
+  { s: 'tree-3', kind: 'stand', x: 3.1, z: -0.2, h: 1.0 }, { s: 'tree-3', kind: 'stand', x: -6.9, z: -0.4, h: 0.95 },
+  { s: 'tree-3', kind: 'stand', x: 7.4, z: -0.3, h: 1.05 },
+  // ornaments on strings, a hand's width off the wall: x is the inset from the nearest side, y the string length
+  { s: 'bauble-copper', kind: 'hang', x: -0.35, z: -2.95, h: 0.62, y: 2.5 }, { s: 'bauble-red', kind: 'hang', x: -1.05, z: -2.75, h: 0.66, y: 3.4 },
+  { s: 'bauble-cream', kind: 'hang', x: -1.75, z: -3.05, h: 0.5, y: 1.7 }, { s: 'bauble-red', kind: 'hang', x: 0.35, z: -2.8, h: 0.64, y: 3.0 },
+  { s: 'bauble-copper', kind: 'hang', x: 1.05, z: -3.0, h: 0.56, y: 2.1 }, { s: 'bauble-cream', kind: 'hang', x: 1.8, z: -2.85, h: 0.52, y: 3.6 },
+  { s: 'sleigh', kind: 'fly', x: 0, z: -3.1, h: 0.72, y: 3.35 },
+]);
+
+const doorScene = await build('hills', 6.4, 240, [
+  { s: 'tree-2', kind: 'stand', x: -7.4, z: -1.9, h: 2.3 }, { s: 'tree-2', kind: 'stand', x: -2.9, z: -1.9, h: 2.5 },
+  { s: 'tree-1', kind: 'stand', x: -4.4, z: -1.0, h: 1.9 }, { s: 'tree-2', kind: 'stand', x: 3.1, z: -1.9, h: 2.6 },
+  { s: 'tree-1', kind: 'stand', x: 4.6, z: -1.0, h: 2.0 }, { s: 'tree-2', kind: 'stand', x: 7.3, z: -1.9, h: 2.2 },
+  { s: 'cottage-kraft', kind: 'stand', x: -6.0, z: -1.0, h: 1.5, home: true },
+  { s: 'family-house', kind: 'stand', x: 0, z: -1.0, h: 2.35, home: true },
+  { s: 'tree-3', kind: 'stand', x: -2.0, z: -0.1, h: 1.2 }, { s: 'tree-3', kind: 'stand', x: 2.2, z: -0.1, h: 1.3 },
+  { s: 'snowman', kind: 'stand', x: -1.25, z: 0.8, h: 0.8 }, { s: 'mailbox', kind: 'stand', x: 1.35, z: 0.8, h: 1.0, mail: true },
+  { s: 'reindeer', kind: 'stand', x: -3.6, z: 0.8, h: 0.75 }, { s: 'tree-3', kind: 'stand', x: 5.8, z: 0.8, h: 1.1 },
+  { s: 'sleigh', kind: 'fly', x: 0, z: -2.9, h: 0.8, y: 3.7 },
+]);
+
+// Order buttons are placeholders until the checkout target is decided.
+const ORDER_URL = '#';
+const ADDRESS = '580 South Santa Claus Lane, North Pole, AK 99705';
+
+const letterItems = [
+  'Personalized Letter from Santa',
+  'Nice List Certificate with golden seal',
+  "Santa's Map to your house",
+  "Santa's Nice List with your child's name",
+  'Official North Pole envelope',
+];
+const goldItems = [
+  'Official North Pole Snow',
+  'Official Reindeer Food',
+  'Door Hanger',
+  'Santa Stop Here Window Sticker',
+  'Nice List Certificate Fridge Magnet',
+];
+const eveItems = [
+  'Official Christmas Ornament',
+  'Official Santa Christmas Eve Milk Mug',
+  'Official Santa Christmas Eve Cookie Plate',
+];
+const videoItems = [
+  'A 30-second video from Santa, Mrs. Claus, or an Elf',
+  'Includes their name, favorite hobbies, pets, and friends',
+  'Delivered within 24 hours by text or email',
+  'Download in HD to keep forever',
+];
+
+// price: null means Regina has not confirmed the bundle price yet.
+const tiers = [
+  { n: 1, name: 'The Letter', lede: 'The classic personalized Santa Letter Package.', items: letterItems, price: '$19.99', cta: 'Choose Letter' },
+  { n: 2, name: 'Letter + Gold', lede: "Add Santa's Gold Christmas Package.", plus: 'Everything in The Letter, plus', items: goldItems, price: null, cta: 'Choose Gold' },
+  { n: 3, name: 'Letter + Christmas Eve', lede: "Add Santa's Christmas Eve Package.", plus: 'Everything in The Letter, plus', items: eveItems, price: null, cta: 'Choose Christmas Eve' },
+  {
+    n: 4, name: 'The Full Christmas', lede: 'The Letter plus both the Gold and Christmas Eve Packages.', plus: 'Everything in The Letter, plus',
+    items: ['Gold Christmas Package (5 items)', 'Christmas Eve Package (3 items)', 'Snow, reindeer food, door hanger and sticker', 'Ornament, milk mug and cookie plate'],
+    price: null, cta: 'Make It Magical', popular: true,
+  },
+  {
+    n: 5, name: 'The Ultimate', lede: 'Both packages plus a Personalized Santa Video.', plus: 'Everything in The Full Christmas, plus',
+    items: ['Personalized Santa Video', '30 seconds from Santa, Mrs. Claus or an Elf', 'Names, hobbies, pets and friends', 'Delivered within 24 hours by text or email'],
+    price: null, cta: 'Get The Ultimate',
+  },
+];
+
+const ALL = [1, 1, 1, 1, 1];
+const GOLD = [0, 1, 0, 1, 1];
+const EVE = [0, 0, 1, 1, 1];
+const compare = [
+  { group: 'The Letter Package', rows: [
+    ['Personalized Letter from Santa', ALL], ['Nice List Certificate', ALL], ["Santa's Map to your house", ALL],
+    ["Santa's Nice List", ALL], ['North Pole envelope and postmark', ALL],
+  ] },
+  { group: 'Gold Christmas Package', rows: [
+    ['North Pole Snow and Reindeer Food', GOLD], ['Door Hanger and Santa Stop Here Sticker', GOLD], ['Nice List Certificate Fridge Magnet', GOLD],
+  ] },
+  { group: 'Christmas Eve Package', rows: [['Christmas Ornament', EVE], ['Milk Mug and Cookie Plate', EVE]] },
+  { group: 'Personalized Santa Video', rows: [['Personalized Santa Video (30 sec, HD)', [0, 0, 0, 0, 1]]] },
+];
+
+const sheets = [
+  { img: letterSheet, name: 'Letter From Santa', text: "A personalized letter with your child's name, on official Santa Claus stationery." },
+  { img: certSheet, name: 'Nice List Certificate', text: 'A "Good Boys and Girls Certificate" embossed with a golden Santa Seal.' },
+  { img: mapSheet, name: 'Santa Map', text: 'Directions from the North Pole straight to your house.' },
+  { img: listSheet, name: "Santa's Nice List", text: "Your child's name on the list, plus a friend's name if you like." },
+  { img: envelopeSheet, name: 'The Envelope', text: 'An official envelope with our real North Pole address.' },
+];
+
+const steps = [
+  ['Choose a package', 'Pick one of five packages and how many letters you want to send.'],
+  ['Personalize it', 'Fill out a quick form for each letter: name, a friend for the Nice List and the address.'],
+  ['Pick your date', 'Ship as soon as possible or choose the date you want the letter sent.'],
+  ['Santa delivers', 'Hand packed and postmarked from the North Pole, guaranteed by December 24th.'],
+];
+
+const reasons = [
+  ['Fine linen paper', 'Every piece is printed on one of a kind fine linen paper.'],
+  ['Raised, embossed seals', "Santa's official seal is embossed so there is no doubt it came from his desk."],
+  ['A real North Pole postmark', `Mailed from ${ADDRESS}.`],
+  ['Ship to multiple homes', 'Send letters to different households, right from checkout.'],
+  ['No limits on letters', 'Order as many letter packages as you need for every child on your list.'],
+  ['Giving back', 'A portion of our profits goes to Toys for Tots, helping kids nationwide.'],
+];
+
+const reviews = [
+  ['My nieces love getting their letters and the special package from Santa!', 'Melodie B.'],
+  ['My kiddos got theirs today! Turns out they both made the nice list after all. Thanks so much.', 'Pam K.'],
+  ['We already ordered another for this Xmas. Brandi loves getting these letters every year from Santa. It helps to keep the magic alive!', 'Brandi T.'],
+  ['Ordered 2 of these. Simply awesome!', 'Jeff D.'],
+  // SAMPLE COPY from here down: written for the design, not from customers. Replace with real reviews before launch.
+  ['My son carried his letter around all day and showed it to everyone at school. Worth every penny.', 'Carla M.'],
+  ['The North Pole postmark is what sold it. My daughter checked the envelope three times.', 'Dana R.'],
+  ['We added the Christmas Eve package and the cookie plate is now a family tradition.', 'Luis G.'],
+  ['Sent letters to all five grandkids at three different addresses. Every one arrived on time.', 'Ruth P.'],
+  ['The Nice List certificate is framed on her bedroom wall. She tells people it is official.', 'Megan S.'],
+  ['The reindeer food and the snow made Christmas Eve feel like a real event at our house.', 'Tom W.'],
+  ['Ordering took five minutes and the paper feels really special in your hands.', 'Priya N.'],
+  ['He heard Santa say his dog’s name in the video and his jaw dropped.', 'Hannah L.'],
+];
+
+const faqs = [
+  ['Will my letter arrive by Christmas?', 'Yes. All shipments are guaranteed to be delivered by December 24th when ordered by the cutoff date.', 'cutoff date to confirm'],
+  ['What is included in each package?', "Every package includes the personalized letter from Santa, Santa's Map, Santa's Nice List with your child's name (and a friend's name), a Nice List Certificate and a decorative North Pole envelope. Higher packages add the Gold Christmas Package, the Christmas Eve Package and a Personalized Santa Video."],
+  ['Can I send letters to more than one child or address?', 'Yes. Prices are per letter, and you can add as many letters as you like and ship each one to a different household at checkout.'],
+  ['Is this an official letter from Santa?', "Our letters are the real deal, printed on one of a kind fine linen paper with Santa's official seal embossed."],
+  ['When will my order ship?', 'Each letter is custom printed and the package is hand packed, so please allow 3 business days for processing. You can also choose a specific date for the letter to be sent.'],
+  ['Where are the letters postmarked from?', `All letters and packages are postmarked from ${ADDRESS}.`],
+  ['What if we are not happy with it?', 'Every order is covered by our 60 Days Money Back Guarantee.'],
+];
+
+const nav = [
+  ['Packages', '#packages'], ["What's Inside", '#inside'], ['How It Works', '#how'], ['Extras', '#extras'], ['FAQ', '#faq'],
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Santa Letter Packages | Santa's Letter Factory</title>
+    <meta name="description" content="Five Santa Letter Packages, each built around a personalized letter from Santa, postmarked from the North Pole." />
+    <meta name="theme-color" content="#1e4a3c" />
+    <script is:inline>
+      // "motion" swaps the still plates for the live scenes. "anim" hides the hero copy until the intro
+      // lays it down, and is dropped after 2.5s so a failed script never leaves it hidden.
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('motion', 'anim');
+        setTimeout(() => document.documentElement.classList.remove('anim'), 2500);
+      }
+    </script>
+  </head>
+  <body>
+    <svg width="0" height="0" class="defs" aria-hidden="true">
+      <symbol id="i-check" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+      <symbol id="i-none" viewBox="0 0 20 20"><path d="M6 10h8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></symbol>
+      <symbol id="i-star" viewBox="0 0 20 20"><path d="M10 1.8l2.5 5.3 5.7.7-4.2 4 1.1 5.7L10 14.7l-5.1 2.8L6 11.8l-4.2-4 5.7-.7z" fill="currentColor" /></symbol>
+      <symbol id="i-play" viewBox="0 0 20 20"><path d="M7 4.5v11l9-5.5z" fill="currentColor" /></symbol>
+    </svg>
+
+    <p class="promise">
+      <span>Guaranteed delivery by December 24th</span>
+      <span>FedEx 2-Day available</span>
+      <span>60 Days Money Back Guarantee</span>
+    </p>
+
+    <header class="night hero">
+      <div class="scene" data-scene={heroScene}>
+        <Image src={heroArt} alt="" widths={[900, 1440, 2200]} sizes="max(100vw, 900px)" loading="eager" />
+      </div>
+      <nav class="nav wrap" aria-label="Main">
+        <a class="nav__logo" href="#top" aria-label="Santa's Letter Factory, home">
+          <Image src={logo} alt="Santa's Letter Factory" width={179} loading="eager" />
+        </a>
+        <ul class="nav__links">
+          {nav.map(([label, href]) => <li><a href={href}>{label}</a></li>)}
+        </ul>
+        <a class="btn btn--amber nav__cta" href="#packages">Order Package</a>
+      </nav>
+
+      <div class="hero__copy wrap" id="top">
+        <h1>Santa Letter Packages</h1>
+        <p>
+          Five ways to bring the magic home. Every package starts with a personalized letter from Santa, printed on fine linen
+          paper, embossed with a raised seal and postmarked from the North Pole.
+        </p>
+        <div class="hero__actions">
+          <a class="btn btn--amber btn--lg" href="#packages">Choose a Package</a>
+          <a class="link" href="#inside">See what's inside</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="night trust-band" aria-label="Guarantees">
+        <ul class="ticket stack wrap">
+          <li><Image src={moneyBack} alt="" width={64} /><p><b>60 Days Money Back</b> Guarantee on every package</p></li>
+          <li><Image src={fedex} alt="" width={64} /><p><b>FedEx 2-Day Available</b> Or ground shipping per letter</p></li>
+          <li><Image src={bbb} alt="" width={64} /><p><b>BBB A Rating</b> North Pole Post Office LLC</p></li>
+          <li><Image src={toys} alt="" width={96} /><p><b>Toys for Tots</b> A portion of profits donated</p></li>
+        </ul>
+      </section>
+
+      <section class="night packages" id="packages">
+        <div class="wrap">
+          <div class="head head--center">
+            <h2>Pick the Magic for Every Child</h2>
+            <p>
+              All packages are priced per letter. Sending to siblings, cousins or grandkids? Add as many letters as you like,
+              each one personalized and shipped to its own address.
+            </p>
+          </div>
+
+          <ol class="lane">
+            {tiers.map((t) => (
+              <li class:list={['house', t.popular && 'house--star']}>
+                <div class="house__card">
+                <div class="house__roof" aria-hidden="true"><span>{t.n}</span></div>
+                <div class="house__body">
+                  {t.popular && <p class="flag">Most popular</p>}
+                  <h3>{t.name}</h3>
+                  <p class="house__lede">{t.lede}</p>
+                  {t.plus && <p class="house__plus">{t.plus}</p>}
+                  <ul class="ticks">
+                    {t.items.map((item) => <li><svg aria-hidden="true"><use href="#i-check" /></svg>{item}</li>)}
+                  </ul>
+                  <p class="price">
+                    {t.price ? <b>{t.price}</b> : <b class="tbc">$XX.XX</b>}
+                    <span>per letter</span>
+                    {!t.price && <em class="todo">price to confirm</em>}
+                  </p>
+                  <a class="btn btn--berry" href={ORDER_URL}>{t.cta}</a>
+                </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <p class="packages__note">
+            Prices are per letter. Shipping and shipping protection are added at checkout: Ground $7.94 per letter, FedEx 2-Day $9.99.
+          </p>
+        </div>
+        <svg class="hills" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 70 C 200 10 430 110 690 50 S 1170 0 1440 60 V320 H0z" />
+          <path d="M0 105 C 240 40 470 140 760 85 S 1200 40 1440 95 V320 H0z" />
+          <path d="M0 138 C 220 80 500 170 800 118 S 1230 80 1440 128 V320 H0z" />
+          <path d="M0 168 C 270 115 540 195 850 150 S 1260 120 1440 160 V320 H0z" />
+          <path d="M0 195 C 300 150 560 216 900 178 S 1280 160 1440 190 V320 H0z" />
+        </svg>
+      </section>
+
+      <section class="paper compare" aria-labelledby="compare-h">
+        <div class="wrap">
+          <div class="head head--center"><h2 id="compare-h">What Comes in Each</h2></div>
+          <div class="board">
+            <div class="ledger" tabindex="0" role="region" aria-labelledby="compare-h">
+              <table>
+                <thead>
+                  <tr>
+                    <td></td>
+                    {tiers.map((t) => (
+                      <th scope="col" class:list={[t.popular && 'is-star']}>
+                        <span class="gable"><i>{t.n}</i></span>{t.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                {compare.map((g, gi) => (
+                  <tbody>
+                    <tr class="ledger__group"><th scope="rowgroup" colspan="6"><span class={`tape tape--${gi + 1}`}>{g.group}</span></th></tr>
+                    {g.rows.map(([label, cols]) => (
+                      <tr>
+                        <th scope="row">{label}</th>
+                        {cols.map((on, i) => (
+                          <td class:list={[tiers[i].popular && 'is-star']}>
+                            {on
+                              ? <span class="sticker" role="img" aria-label="Included"><svg aria-hidden="true"><use href="#i-check" /></svg></span>
+                              : <span class="nope" role="img" aria-label="Not included"></span>}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                ))}
+                <tfoot>
+                  <tr>
+                    <th scope="row">Price per letter</th>
+                    {tiers.map((t) => <td class:list={[t.popular && 'is-star']}>{t.price ? <b>{t.price}</b> : <b class="tbc">$XX.XX</b>}</td>)}
+                  </tr>
+                  <tr class="ledger__go">
+                    <td></td>
+                    {tiers.map((t) => <td class:list={[t.popular && 'is-star']}><a class="btn btn--berry btn--sm" href={ORDER_URL} aria-label={`Choose ${t.name}`}>Choose</a></td>)}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="paper inside" id="inside">
+        <div class="wrap inside__grid">
+          <!-- the envelope opens as you scroll and the five pieces rise out of it -->
+          <div class="env" aria-hidden="true">
+            <div class="env__back"></div>
+            <div class="fan">
+              {sheets.map((s, i) => <Image src={s.img} alt="" width={300} class={`fan__sheet fan__sheet--${i + 1}`} />)}
+            </div>
+            <div class="env__front"></div>
+            <div class="env__flap"><i></i></div>
+          </div>
+          <div>
+            <div class="head">
+              <h2>Five Pieces of North Pole Magic</h2>
+              <p>Inside every letter package. Each individual piece is printed on fine linen paper and embossed with raised seals.</p>
+            </div>
+            <ol class="pieces">
+              {sheets.map((s) => <li><h3>{s.name}</h3><p>{s.text}</p></li>)}
+            </ol>
+            <div class="postmark">
+              <svg viewBox="0 0 200 200" aria-hidden="true">
+                <path id="pm-top" d="M30 100 A70 70 0 0 1 170 100" fill="none" />
+                <path id="pm-bottom" d="M22 100 A78 78 0 0 0 178 100" fill="none" />
+                <circle cx="100" cy="100" r="92" /><circle cx="100" cy="100" r="54" />
+                <text><textPath href="#pm-top" startOffset="50%" text-anchor="middle">NORTH POLE, ALASKA</textPath></text>
+                <text><textPath href="#pm-bottom" startOffset="50%" text-anchor="middle">SANTA CLAUS LANE</textPath></text>
+                <text class="pm__zip" x="100" y="96" text-anchor="middle">99705</text>
+                <text class="pm__day" x="100" y="120" text-anchor="middle">DEC 24</text>
+              </svg>
+              <p>Every envelope is postmarked from our official North Pole address<b>{ADDRESS}</b></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="paper route" id="how">
+        <div class="head head--center wrap">
+          <h2>From the North Pole to Your Door</h2>
+        </div>
+        <!-- the whole stage pins; the red hem of the next sheet stays in view under it the whole time -->
+        <div class="route__stage">
+          <ol class="steps wrap">
+            {steps.map(([title, text]) => <li class="stack"><h3>{title}</h3><p>{text}</p></li>)}
+          </ol>
+          <div class="route__hem" aria-hidden="true"><i></i></div>
+          <div class="route__plate route__plate--wide">
+            <div class="diorama" {...routeWidePlate}>
+              <Image src={routeWide} alt="A paper landscape: a plank path winds from the North Pole post office down to a family home." widths={[1100, 1920]} sizes="100vw" />
+            </div>
+            <svg class="route__path" viewBox="0 0 1100 614" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <path class="route__ink" data-points={JSON.stringify(pathWide)} />
+              <g class="route__mail"><image href={envelopeUrl} x="-27" y="-18.5" width="54" height="37" /></g>
+            </svg>
+          </div>
+          <div class="route__plate route__plate--tall">
+            <div class="diorama" {...routeTallPlate}>
+              <Image src={routeTall} alt="A paper landscape: a plank path zigzags from the North Pole post office down to a family home." widths={[600, 1004]} sizes="100vw" />
+            </div>
+            <svg class="route__path" viewBox="0 0 600 1076" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <path class="route__ink" data-points={JSON.stringify(pathTall)} />
+              <g class="route__mail"><image href={envelopeUrl} x="-42" y="-29" width="84" height="58" /></g>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <section class="berry extras" id="extras">
+        <div class="wrap">
+          <div class="head head--center">
+            <h2>Make Christmas Even Bigger</h2>
+            <p>The extras that build up packages 2 through 5.</p>
+          </div>
+          <!-- each package sits on a paper doily under a bow; what is inside hangs off it as gift tags -->
+          <div class="gifts">
+            {[
+              { img: goldBox, name: "Santa's Gold Christmas Package", items: goldItems, alt: "Santa's Gold Christmas Package: snow, reindeer food, door hanger and stickers in a gift box" },
+              { img: eveBox, name: "Santa's Christmas Eve Package", items: eveItems, alt: "Santa's Christmas Eve Package: cookie plate, milk mug and ornament in a gift box" },
+            ].map((g) => (
+              <article class="gift">
+                <div class="gift__plate">
+                  <svg class="doily" viewBox="-100 -100 200 200" aria-hidden="true">
+                    {Array.from({ length: 30 }, (_, i) => <circle cx={Math.cos((i / 30) * Math.PI * 2) * 88} cy={Math.sin((i / 30) * Math.PI * 2) * 88} r="10.5" />)}
+                    <circle r="88" /><circle class="doily__stitch" r="76" />
+                  </svg>
+                  <Image class="gift__box" src={g.img} alt={g.alt} width={420} />
+                  <img class="gift__bow" src={art.bow} alt="" loading="lazy" />
+                </div>
+                <h3 class="ribbon"><span>{g.name}</span></h3>
+                <ul class="tags">{g.items.map((i) => <li>{i}</li>)}</ul>
+              </article>
+            ))}
+          </div>
+
+          <!-- a paper theatre: the curtains part on the sample film -->
+          <article class="theatre">
+            <a class="theatre__stage" href="#" aria-label="Watch a sample Santa video">
+              <Image src={videoPoster} alt="Santa in his chair by the fire, from a sample video" width={760} />
+              <span class="theatre__curtain theatre__curtain--l"></span>
+              <span class="theatre__curtain theatre__curtain--r"></span>
+              <span class="theatre__valance"></span>
+              <span class="video__play"><svg aria-hidden="true"><use href="#i-play" /></svg>Watch a sample</span>
+            </a>
+            <div class="theatre__bill stack">
+              <b class="price-sticker">$19.95</b>
+              <h3>Personalized Santa Video</h3>
+              <ul class="ticks">{videoItems.map((i) => <li><svg aria-hidden="true"><use href="#i-check" /></svg>{i}</li>)}</ul>
+              <p class="video__from">Included in The Ultimate. From our sister site, santavideo.org <em class="todo">sample link to confirm</em></p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="paper personal">
+        <div class="wrap personal__grid">
+          <div>
+            <div class="head">
+              <h2>Written Just for Them</h2>
+              <p>
+                Every letter is custom printed with your child's name, so it reads like it came right from Santa's desk. Siblings
+                each get their own letter, and you can ship each one to a different home.
+              </p>
+            </div>
+            <label class="field">
+              <span>Try it with your child's first name</span>
+              <input id="child-name" type="text" maxlength="14" autocomplete="off" placeholder="Olivia" />
+            </label>
+            <a class="btn btn--berry btn--lg" href="#packages">Order Package</a>
+          </div>
+          <figure class="demo">
+            <Image src={letterDemo} alt="A letter from the desk of Santa Claus, addressed to your child by name" width={656} />
+            <output class="demo__name" for="child-name" hidden></output>
+          </figure>
+        </div>
+      </section>
+
+      <section class="paper proof" id="reviews">
+        <div class="wrap">
+          <div class="head head--center"><h2>The Real Deal from Santa</h2></div>
+          <!-- a sheet of six postage stamps -->
+          <ul class="stamps">
+            {reasons.map(([t, d], i) => (
+              <li class="stamp">
+                <div class="stamp__in">
+                  <span class="stamp__art"><img src={art[reasonArt[i]]} alt="" loading="lazy" /></span>
+                  <h3>{t}</h3>
+                  <p>{d}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <svg class="hills hills--night" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 60 C 230 5 470 105 740 45 S 1190 5 1440 55 V320 H0z" />
+          <path d="M0 98 C 250 40 500 135 790 80 S 1210 40 1440 92 V320 H0z" />
+          <path d="M0 134 C 260 78 520 165 820 114 S 1240 78 1440 126 V320 H0z" />
+          <path d="M0 166 C 290 112 560 192 870 148 S 1270 118 1440 158 V320 H0z" />
+          <path d="M0 194 C 320 150 580 214 920 176 S 1290 158 1440 190 V320 H0z" />
+        </svg>
+      </section>
+
+      <section class="night grove" id="reviews">
+        <div class="wrap grove__grid">
+          <!-- every ornament on the tree is a review; touch one to read it -->
+          <div class="tree">
+            <img class="tree__fir" src={art['big-tree']} alt="" loading="lazy" />
+            <img class="tree__star" src={art['gold-star']} alt="" loading="lazy" />
+            {ornaments.map((o, i) => o.tag ? (
+              <button class="orn" style={`--x:${o.x.toFixed(1)}%;--y:${o.y}%;--d:${(i % 5) * 0.4}s`} data-review={o.review} type="button" aria-label={`Read the review from ${reviews[o.review][1]}`}>
+                <span class="tagr">
+                  <span class="stars">{[1, 2, 3, 4, 5].map(() => <svg aria-hidden="true"><use href="#i-star" /></svg>)}</span>
+                  {reviews[o.review][1].split(' ')[0]}
+                </span>
+              </button>
+            ) : (
+              <img class="bob" style={`--x:${o.x.toFixed(1)}%;--y:${o.y}%;--d:${(i % 5) * 0.4}s`} src={art[o.b]} alt="" loading="lazy" />
+            ))}
+          </div>
+          <div class="grove__side">
+            <div class="head"><h2>What Families Are Saying</h2><p>Every tag on the tree is a note from a family. Touch one to read it.</p></div>
+            <figure class="quote stack" aria-live="polite">
+              <p class="stars" role="img" aria-label="5 out of 5 stars">{[1, 2, 3, 4, 5].map(() => <svg aria-hidden="true"><use href="#i-star" /></svg>)}</p>
+              <blockquote>{reviews[0][0]}</blockquote>
+              <figcaption>{reviews[0][1]}</figcaption>
+            </figure>
+            <p class="grove__note"><em class="todo">8 of 12 are sample reviews</em></p>
+          </div>
+        </div>
+        <script type="application/json" id="review-data" set:html={JSON.stringify(reviews)} />
+        <svg class="hills hills--paper" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 70 C 200 10 430 110 690 50 S 1170 0 1440 60 V320 H0z" />
+          <path d="M0 105 C 240 40 470 140 760 85 S 1200 40 1440 95 V320 H0z" />
+          <path d="M0 138 C 220 80 500 170 800 118 S 1230 80 1440 128 V320 H0z" />
+          <path d="M0 168 C 270 115 540 195 850 150 S 1260 120 1440 160 V320 H0z" />
+          <path d="M0 195 C 300 150 560 216 900 178 S 1280 160 1440 190 V320 H0z" />
+        </svg>
+      </section>
+
+      <section class="paper faq" id="faq">
+        <div class="wrap faq__grid">
+          <div class="faq__side">
+            <div class="head"><h2>Questions for Santa</h2></div>
+            <a class="ask" href="https://santaletters.org/contact">
+              <img src={art.snowman} alt="" loading="lazy" />
+              <span class="ask__bubble">Still wondering? <b>Ask the elves</b></span>
+            </a>
+          </div>
+          <!-- each question is a folded note; opening one unfolds the answer and closes the others -->
+          <div class="faq__list">
+            {faqs.map(([q, a, todo], i) => (
+              <details class="note" name="faq" open={i === 0}>
+                <summary><i>{i + 1}</i>{q}</summary>
+                <div class="note__in"><p>{a} {todo && <em class="todo">{todo}</em>}</p></div>
+              </details>
+            ))}
+          </div>
+        </div>
+        <svg class="hills hills--night" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 60 C 230 5 470 105 740 45 S 1190 5 1440 55 V320 H0z" />
+          <path d="M0 98 C 250 40 500 135 790 80 S 1210 40 1440 92 V320 H0z" />
+          <path d="M0 134 C 260 78 520 165 820 114 S 1240 78 1440 126 V320 H0z" />
+          <path d="M0 166 C 290 112 560 192 870 148 S 1270 118 1440 158 V320 H0z" />
+          <path d="M0 194 C 320 150 580 214 920 176 S 1290 158 1440 190 V320 H0z" />
+        </svg>
+      </section>
+    </main>
+
+    <footer>
+      <div class="night finale">
+        <div class="scene" data-scene={doorScene}>
+          <Image src={doorArt} alt="" widths={[900, 1440, 2200]} sizes="max(100vw, 900px)" />
+        </div>
+        <div class="finale__copy wrap">
+          <h2>Keep the Magic Alive</h2>
+          <p>
+            Surprise your child or grandchild with a personalized letter and a package of goodies from Santa Claus himself. A
+            keepsake they will remember for the rest of their life.
+          </p>
+          <a class="btn btn--amber btn--lg" href="#packages">Order Package</a>
+        </div>
+      </div>
+      <div class="foot">
+        <p class="foot__toys">Proud to donate a portion of all profits to <Image src={toys} alt="Toys for Tots" width={120} /></p>
+        <ul>
+          <li><a href="https://santaletters.org/privacy">Privacy</a></li>
+          <li><a href="https://santaletters.org/terms">Terms and Conditions</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="https://santaletters.org/contact">Contact Us</a></li>
+          <li><a href="https://santaletters.org/affiliates">Affiliate Signup</a></li>
+        </ul>
+        <address>{ADDRESS}</address>
+      </div>
+    </footer>
+
+    <script>
+      import '../scripts/motion.ts';
+
+      const input = document.querySelector<HTMLInputElement>('#child-name');
+      const out = document.querySelector<HTMLOutputElement>('.demo__name');
+      input?.addEventListener('input', () => {
+        const name = input.value.trim();
+        if (out) { out.value = name; out.hidden = !name; }
+      });
+    </script>
+  </body>
+</html>
