@@ -93,33 +93,17 @@ mm.add(
       });
     });
 
-    /* 2. Packages: each house hinges up from the lane like a pop-up book page.
-          The <li> stays flat so ScrollTrigger measures it where it really is; the card inside does the hinge. */
-    const houses = $$('.house');
-    const card = (h: Element) => $('.house__card', h);
-    gsap.set(houses, { perspective: 1200 });
-    gsap.set(houses.map(card), { rotationX: -88, autoAlpha: 0, transformOrigin: '50% 100%' });
-    gsap.set('.house__roof span', { scale: 0 });
-    ScrollTrigger.batch(houses, {
-      start: 'top 82%', once: true,
-      onEnter: (batch) => {
-        gsap.to(batch.map(card), { rotationX: 0, autoAlpha: 1, duration: 1.1, ease: 'expo.out', stagger: 0.1 });
-        gsap.to(batch.map((h) => $('.house__roof span', h)), { scale: 1, duration: 0.5, ease: 'back.out(2.2)', stagger: 0.1, delay: 0.45 });
-      },
-    });
-    if (fine) houses.forEach((h) => cleanups.push(tilt($('.house__body', h), 5)));
-
     /* stacked paper hills slide apart as you cross from one ground to the next */
     $$('.hills').forEach((svg) => {
       const tl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: svg, start: 'top bottom', end: 'bottom 45%', scrub: 0.4 } });
       $$<SVGPathElement>('path', svg).forEach((p, i, all) => tl.from(p, { yPercent: 70 - (i / (all.length - 1)) * 58 }, 0));
     });
 
-    /* 3. Ledger: the ticks are inked in, column by column */
-    gsap.from('.board', { y: 60, rotation: 1.5, autoAlpha: 0, duration: 1, ease: 'expo.out', scrollTrigger: { trigger: '.board', start: 'top 85%' } });
-    gsap.from('.ledger .gable', { yPercent: 120, duration: 0.7, ease: 'back.out(1.8)', stagger: 0.08, scrollTrigger: { trigger: '.ledger', start: 'top 78%' } });
-    gsap.from('.ledger .sticker', { scale: 0, rotation: -90, duration: 0.5, ease: 'back.out(2.4)', stagger: { each: 0.02, from: 'start' }, scrollTrigger: { trigger: '.ledger', start: 'top 70%' } });
-    gsap.from('.ledger .tape', { scaleX: 0, transformOrigin: '0% 50%', duration: 0.5, ease: 'expo.out', stagger: 0.15, scrollTrigger: { trigger: '.ledger', start: 'top 70%' } });
+    /* 2. Packages: the tags drop onto the line one by one and swing to rest */
+    gsap.from('.peg', {
+      y: -70, rotation: (i) => (i % 2 ? -14 : 14), autoAlpha: 0, duration: 1.4, ease: 'elastic.out(1, 0.45)', stagger: 0.09,
+      scrollTrigger: { trigger: '.line', start: 'top 80%' },
+    });
 
     /* 4. The envelope opens: the flap swings up and the five sheets rise out and fan */
     const sheets = $$('.fan__sheet');
@@ -127,6 +111,7 @@ mm.add(
     gsap.timeline({ defaults: { ease: 'power2.inOut' }, scrollTrigger: { trigger: '.env', start: 'top 78%', end: 'center 42%', scrub: 0.6 } })
       .fromTo('.env__flap', { rotationX: 0, zIndex: 7 }, { rotationX: 180, duration: 0.35 }, 0)
       .set('.env__flap', { zIndex: 1 }, 0.18)
+      .fromTo('.env__flap i', { opacity: 1 }, { opacity: 0, duration: 0.02 }, 0.17)
       .fromTo(sheets, { yPercent: 46, scale: 0.78, autoAlpha: 0, '--a': '0deg' }, { yPercent: 0, scale: 1, autoAlpha: 1, duration: 0.4, stagger: 0.03 }, 0.3)
       .to(sheets, { '--a': (i: number) => fanned[i], duration: 0.3, ease: 'power2.out' }, 0.62);
     if (fine) cleanups.push(tilt($('.env'), 5));
@@ -142,9 +127,18 @@ mm.add(
     const ink = $<SVGPathElement>('.route__ink', plate);
     const steps = $$('.steps li');
     const length = ink.getTotalLength();
-    const marks = [0, 0.3, 0.62, 0.94];
+    const marks = [0.13, 0.36, 0.64, 0.94];
     route.classList.add('route--live');
     steps[0].classList.add('is-now');
+    // plant each sign at the point on the path where its step happens
+    const plant = () => {
+      const box = stage.getBoundingClientRect(), ctm = ink.getScreenCTM()!;
+      steps.forEach((li, i) => {
+        const p = ink.getPointAtLength(marks[i] * length).matrixTransform(ctm);
+        li.style.setProperty('--x', `${gsap.utils.clamp(150, box.width - 150, p.x - box.left)}px`);
+        li.style.setProperty('--y', `${Math.max(190, p.y - box.top)}px`);
+      });
+    };
     gsap.set(ink, { strokeDasharray: length, strokeDashoffset: length });
     gsap.set(mail, { autoAlpha: 1 });
     gsap.timeline({
@@ -154,6 +148,7 @@ mm.add(
         start: 'top top',
         end: desktop ? '+=1600' : '+=1300',
         pin: true, scrub: 0.7, anticipatePin: 1, invalidateOnRefresh: true,
+        onRefresh: plant,
         onUpdate: ({ progress }) => {
           const at = marks.reduce((n, m, i) => (progress >= m ? i : n), 0);
           steps.forEach((li, i) => { li.classList.toggle('is-now', i === at); li.classList.toggle('is-done', i < at); });
@@ -236,8 +231,28 @@ mm.add(
 
 /* the fan also answers the list beside it, with or without motion */
 const sheets = $$('.fan__sheet');
+// Dealt like a card: the sheet slides up clear of the fan, goes to the top of the pile, and drops back in front.
+// Leaving reverses it: up, back to its own place in the pile, down into the fan.
+const fanAngle = ['0deg', '-13deg', '13deg', '-26deg', '26deg'];
+const pile = sheets.map((s) => getComputedStyle(s).zIndex);
 $$('.pieces li').forEach((li, i) => {
-  const lift = (on: boolean) => sheets[i]?.classList.toggle('is-up', on);
+  const lift = (on: boolean) => {
+    const s = sheets[i];
+    s.classList.toggle('is-up', on);
+    if (stillMotion) return;
+    gsap.killTweensOf(s);
+    if (on) {
+      gsap.timeline()
+        .to(s, { yPercent: -66, '--a': '0deg', duration: 0.3, ease: 'power2.out' })
+        .set(s, { zIndex: 9 })
+        .to(s, { yPercent: -16, scale: 1.14, duration: 0.5, ease: 'back.out(1.4)' });
+    } else {
+      gsap.timeline()
+        .to(s, { yPercent: -66, scale: 1, duration: 0.25, ease: 'power2.in' })
+        .set(s, { zIndex: pile[i] })
+        .to(s, { yPercent: 0, '--a': fanAngle[i], duration: 0.45, ease: 'power3.out' });
+    }
+  };
   li.addEventListener('pointerenter', () => lift(true));
   li.addEventListener('pointerleave', () => lift(false));
 });

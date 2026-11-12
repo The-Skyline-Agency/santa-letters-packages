@@ -12,11 +12,11 @@ import routeWide from '../assets/art/route-wide.jpg';
 import routeWideDepth from '../assets/art/route-wide-depth.jpg';
 import routeTall from '../assets/art/route-tall.jpg';
 import routeTallDepth from '../assets/art/route-tall-depth.jpg';
-import letterSheet from '../assets/product/santa-letter-sheet.png';
-import certSheet from '../assets/product/cert-letter-lrg.webp';
-import mapSheet from '../assets/product/directions-lrg.webp';
-import listSheet from '../assets/product/nice-list-lrg.webp';
-import envelopeSheet from '../assets/product/envelope-lrg.webp';
+import letterSheet from '../assets/product/santa-letter-full.png';
+import certSheet from '../assets/product/full-cert-letter-lrg.webp';
+import mapSheet from '../assets/product/full-directions-lrg.webp';
+import listSheet from '../assets/product/full-nice-list-lrg.webp';
+import envelopeSheet from '../assets/product/full-envelope-lrg.webp';
 import letterDemo from '../assets/product/letter-03.png';
 import goldBox from '../assets/product/2026-gold-package.webp';
 import eveBox from '../assets/product/2026-christmas-eve-package.webp';
@@ -54,8 +54,9 @@ const build = async (ground: SceneSpec['ground'], minWidth: number, snow: number
   } satisfies SceneSpec);
 
 const envelopeUrl = await sprite('envelope');
+const santaBody = await sprite('santa-body'), santaArm = await sprite('santa-arm');
 const art = Object.fromEntries(await Promise.all(
-  ['big-tree', 'linen', 'seal', 'postmarked', 'houses', 'bundle', 'train', 'bow', 'gold-star', 'bauble-red', 'bauble-copper', 'bauble-cream', 'snowman', 'mailbox']
+  ['big-tree', 'linen', 'seal', 'postmarked', 'houses', 'bundle', 'train', 'bow', 'gold-star', 'bauble-red', 'bauble-copper', 'bauble-cream', 'snowman', 'mailbox', 'elf']
     .map(async (n) => [n, await sprite(n)] as const),
 ));
 const reasonArt = ['linen', 'seal', 'postmarked', 'houses', 'bundle', 'train'];
@@ -66,7 +67,7 @@ const tiersOfTree = [{ y: 22, half: 18.7, n: 2 }, { y: 35, half: 24.3, n: 3 }, {
 const baubles = ['bauble-red', 'bauble-cream', 'bauble-copper'];
 let nextReview = 0;
 const ornaments = tiersOfTree.flatMap((t, ti) =>
-  Array.from({ length: t.n }, (_, i) => ({ x: 50 + ((i + 0.5) / t.n - 0.5) * 2 * t.half * 0.88, y: t.y + (i % 2 ? 1.2 : 0.2), b: baubles[(ti + i) % 3], tag: i % 2 === 1 })),
+  Array.from({ length: t.n }, (_, i) => ({ x: 50 + ((i + 0.5) / t.n - 0.5) * 2 * t.half * 0.88, y: t.y + (i % 2 ? -1 : 0.2), b: baubles[(ti + i) % 3], tag: i % 2 === 1 })),
 ).map((o) => ({ ...o, review: o.tag ? nextReview++ : -1 }));
 
 const heroScene = await build('shelf', 6.8, 220, [
@@ -232,6 +233,21 @@ const nav = [
     <title>Santa Letter Packages | Santa's Letter Factory</title>
     <meta name="description" content="Five Santa Letter Packages, each built around a personalized letter from Santa, postmarked from the North Pole." />
     <meta name="theme-color" content="#1e4a3c" />
+    <!-- preview build with placeholder prices and sample reviews: drop this line at launch -->
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="canonical" href={Astro.url} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Santa's Letter Factory" />
+    <meta property="og:title" content="Santa Letter Packages | Santa's Letter Factory" />
+    <meta property="og:description" content="Five Santa Letter Packages, each built around a personalized letter from Santa, postmarked from the North Pole." />
+    <meta property="og:url" content={Astro.url} />
+    <meta property="og:image" content={new URL('/og.jpg', Astro.url)} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A paper-craft Christmas village with a North Pole post office" />
+    <meta name="twitter:card" content="summary_large_image" />
     <script is:inline>
       // "motion" swaps the still plates for the live scenes. "anim" hides the hero copy until the intro
       // lays it down, and is dropped after 2.5s so a failed script never leaves it hidden.
@@ -261,7 +277,7 @@ const nav = [
       </div>
       <nav class="nav wrap" aria-label="Main">
         <a class="nav__logo" href="#top" aria-label="Santa's Letter Factory, home">
-          <Image src={logo} alt="Santa's Letter Factory" width={179} loading="eager" />
+          <Image src={logo} alt="Santa's Letter Factory" width={358} loading="eager" />
         </a>
         <ul class="nav__links">
           {nav.map(([label, href]) => <li><a href={href}>{label}</a></li>)}
@@ -290,46 +306,6 @@ const nav = [
           <li><Image src={bbb} alt="" width={64} /><p><b>BBB A Rating</b> North Pole Post Office LLC</p></li>
           <li><Image src={toys} alt="" width={96} /><p><b>Toys for Tots</b> A portion of profits donated</p></li>
         </ul>
-      </section>
-
-      <section class="night packages" id="packages">
-        <div class="wrap">
-          <div class="head head--center">
-            <h2>Pick the Magic for Every Child</h2>
-            <p>
-              All packages are priced per letter. Sending to siblings, cousins or grandkids? Add as many letters as you like,
-              each one personalized and shipped to its own address.
-            </p>
-          </div>
-
-          <ol class="lane">
-            {tiers.map((t) => (
-              <li class:list={['house', t.popular && 'house--star']}>
-                <div class="house__card">
-                <div class="house__roof" aria-hidden="true"><span>{t.n}</span></div>
-                <div class="house__body">
-                  {t.popular && <p class="flag">Most popular</p>}
-                  <h3>{t.name}</h3>
-                  <p class="house__lede">{t.lede}</p>
-                  {t.plus && <p class="house__plus">{t.plus}</p>}
-                  <ul class="ticks">
-                    {t.items.map((item) => <li><svg aria-hidden="true"><use href="#i-check" /></svg>{item}</li>)}
-                  </ul>
-                  <p class="price">
-                    {t.price ? <b>{t.price}</b> : <b class="tbc">$XX.XX</b>}
-                    <span>per letter</span>
-                    {!t.price && <em class="todo">price to confirm</em>}
-                  </p>
-                  <a class="btn btn--berry" href={ORDER_URL}>{t.cta}</a>
-                </div>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <p class="packages__note">
-            Prices are per letter. Shipping and shipping protection are added at checkout: Ground $7.94 per letter, FedEx 2-Day $9.99.
-          </p>
-        </div>
         <svg class="hills" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true">
           <path d="M0 70 C 200 10 430 110 690 50 S 1170 0 1440 60 V320 H0z" />
           <path d="M0 105 C 240 40 470 140 760 85 S 1200 40 1440 95 V320 H0z" />
@@ -339,52 +315,46 @@ const nav = [
         </svg>
       </section>
 
-      <section class="paper compare" aria-labelledby="compare-h">
+      <!-- The five packages are five gift tags pegged on a line of baker's twine. Each tag shows, as four
+           small pictures, which of the four pieces it includes. -->
+      <section class="paper pegs" id="packages">
         <div class="wrap">
-          <div class="head head--center"><h2 id="compare-h">What Comes in Each</h2></div>
-          <div class="board">
-            <div class="ledger" tabindex="0" role="region" aria-labelledby="compare-h">
-              <table>
-                <thead>
-                  <tr>
-                    <td></td>
-                    {tiers.map((t) => (
-                      <th scope="col" class:list={[t.popular && 'is-star']}>
-                        <span class="gable"><i>{t.n}</i></span>{t.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                {compare.map((g, gi) => (
-                  <tbody>
-                    <tr class="ledger__group"><th scope="rowgroup" colspan="6"><span class={`tape tape--${gi + 1}`}>{g.group}</span></th></tr>
-                    {g.rows.map(([label, cols]) => (
-                      <tr>
-                        <th scope="row">{label}</th>
-                        {cols.map((on, i) => (
-                          <td class:list={[tiers[i].popular && 'is-star']}>
-                            {on
-                              ? <span class="sticker" role="img" aria-label="Included"><svg aria-hidden="true"><use href="#i-check" /></svg></span>
-                              : <span class="nope" role="img" aria-label="Not included"></span>}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                ))}
-                <tfoot>
-                  <tr>
-                    <th scope="row">Price per letter</th>
-                    {tiers.map((t) => <td class:list={[t.popular && 'is-star']}>{t.price ? <b>{t.price}</b> : <b class="tbc">$XX.XX</b>}</td>)}
-                  </tr>
-                  <tr class="ledger__go">
-                    <td></td>
-                    {tiers.map((t) => <td class:list={[t.popular && 'is-star']}><a class="btn btn--berry btn--sm" href={ORDER_URL} aria-label={`Choose ${t.name}`}>Choose</a></td>)}
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+          <div class="head head--center">
+            <h2>Pick the Magic for Every Child</h2>
+            <p>Every package starts with the letter. Prices are per letter.</p>
           </div>
+          <div class="line">
+            <svg class="twine" viewBox="0 0 1200 70" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M0 8 Q600 78 1200 8" /><path class="twine__red" d="M0 8 Q600 78 1200 8" />
+            </svg>
+            <ol class="line__tags">
+              {tiers.map((t, ti) => (
+                <li class:list={['peg', t.popular && 'peg--star']}>
+                  <div class="peg__tag">
+                    {t.popular && <span class="flag">Most popular</span>}
+                    <h3>{t.name}</h3>
+                    <ul class="inc" aria-label="Included">
+                      {[
+                        { name: 'Letter package', img: letterSheet },
+                        { name: 'Gold Christmas Package', img: goldBox },
+                        { name: 'Christmas Eve Package', img: eveBox },
+                        { name: 'Santa Video', img: videoPoster },
+                      ].map((p, pi) => {
+                        const has = [[1, 0, 0, 0], [1, 1, 0, 0], [1, 0, 1, 0], [1, 1, 1, 0], [1, 1, 1, 1]][ti][pi];
+                        return <li class:list={[!has && 'is-off']} title={p.name}><Image src={p.img} alt={has ? p.name : `${p.name}: not included`} width={120} /></li>;
+                      })}
+                    </ul>
+                    <p class="price">
+                      {t.price ? <b>{t.price}</b> : <b class="tbc">$XX.XX</b>}
+                      {!t.price && <em class="todo">to confirm</em>}
+                    </p>
+                    <a class="btn btn--berry" href={ORDER_URL}>{t.cta}</a>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <p class="pegs__note">Shipping and shipping protection are added at checkout: Ground $7.94 per letter, FedEx 2-Day $9.99.</p>
         </div>
       </section>
 
@@ -394,7 +364,7 @@ const nav = [
           <div class="env" aria-hidden="true">
             <div class="env__back"></div>
             <div class="fan">
-              {sheets.map((s, i) => <Image src={s.img} alt="" width={300} class={`fan__sheet fan__sheet--${i + 1}`} />)}
+              {sheets.map((s, i) => <Image src={s.img} alt="" width={640} class={`fan__sheet fan__sheet--${i + 1}`} />)}
             </div>
             <div class="env__front"></div>
             <div class="env__flap"><i></i></div>
@@ -430,7 +400,7 @@ const nav = [
         <!-- the whole stage pins; the red hem of the next sheet stays in view under it the whole time -->
         <div class="route__stage">
           <ol class="steps wrap">
-            {steps.map(([title, text]) => <li class="stack"><h3>{title}</h3><p>{text}</p></li>)}
+            {steps.map(([title, text]) => <li class="stack"><i aria-hidden="true"></i><h3>{title}</h3><p>{text}</p></li>)}
           </ol>
           <div class="route__hem" aria-hidden="true"><i></i></div>
           <div class="route__plate route__plate--wide">
@@ -439,6 +409,7 @@ const nav = [
             </div>
             <svg class="route__path" viewBox="0 0 1100 614" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
               <path class="route__ink" data-points={JSON.stringify(pathWide)} />
+              <g class="route__santa" transform="translate(868 446)"><image href={santaBody} width="62" height="85" /><image class="route__wave" href={santaArm} width="62" height="85" /></g>
               <g class="route__mail"><image href={envelopeUrl} x="-27" y="-18.5" width="54" height="37" /></g>
             </svg>
           </div>
@@ -448,6 +419,7 @@ const nav = [
             </div>
             <svg class="route__path" viewBox="0 0 600 1076" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
               <path class="route__ink" data-points={JSON.stringify(pathTall)} />
+              <g class="route__santa" transform="translate(440 884)"><image href={santaBody} width="76" height="104" /><image class="route__wave" href={santaArm} width="76" height="104" /></g>
               <g class="route__mail"><image href={envelopeUrl} x="-42" y="-29" width="84" height="58" /></g>
             </svg>
           </div>
@@ -590,7 +562,7 @@ const nav = [
           <div class="faq__side">
             <div class="head"><h2>Questions for Santa</h2></div>
             <a class="ask" href="https://santaletters.org/contact">
-              <img src={art.snowman} alt="" loading="lazy" />
+              <img src={art.elf} alt="" loading="lazy" />
               <span class="ask__bubble">Still wondering? <b>Ask the elves</b></span>
             </a>
           </div>
